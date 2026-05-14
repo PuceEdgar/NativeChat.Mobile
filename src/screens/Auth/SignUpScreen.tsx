@@ -1,13 +1,15 @@
-import { router } from "expo-router";
+import { useAuth } from "@/src/contexts/AuthContext";
+import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { authService } from "../../services/authService";
 
 export const SignUpScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [verifyPassword, setVerifyPassword] = useState("");
+
+  const { register } = useAuth();
 
   const handleSignUp = async () => {
     if (username.length < 3 || password.length < 6) {
@@ -21,16 +23,14 @@ export const SignUpScreen = () => {
     }
 
     try {
-      const isRegistered = await authService.register(username, password);
+      const isRegisterSuccess = await register(username, password);
 
-      if (isRegistered) {
+      if (isRegisterSuccess) {
         Alert.alert("Success", "Account created! Please log in.");
-        router.push("/(auth)/login");
-      }
-      else {
+        router.replace("/(auth)/login");
+      } else {
         Alert.alert("Failed", "Failed to register user.");
       }
-      
     } catch (error) {
       Alert.alert("Registration Failed", (error as Error).message);
     }
@@ -68,12 +68,20 @@ export const SignUpScreen = () => {
       <Pressable onPress={handleSignUp} style={styles.button}>
         <Text style={styles.buttonText}>Sign up</Text>
       </Pressable>
+
+      <Pressable>
+              <Text style={styles.signUp}>
+                Already have an account?{" "}
+                <Link href="/(auth)/login" style={styles.signUpLink}>
+                  Log In
+                </Link>
+              </Text>
+            </Pressable>      
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  //container: { flex: 1, justifyContent: 'center', padding: 20 },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -81,7 +89,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     paddingHorizontal: 20,
   },
-  //input: { height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 10, borderRadius: 10 },
   title: { fontSize: 30, textAlign: "center", marginBottom: 30 },
   button: {
     width: "100%",

@@ -8,7 +8,7 @@ export const LoginScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const { login, userToken } = useAuth();
+  const { login } = useAuth();
   const handleLogin = async () => {
     if (!username || !password) {
       Alert.alert("Error", "Please enter both username and password.");
@@ -17,8 +17,6 @@ export const LoginScreen = () => {
 
     try {
       await login(username, password);
-      // Navigation to Chat Screen would follow
-      //Alert.alert("Login success", `Token: ${userToken}`);
     } catch (error) {
       Alert.alert("Login Failed", (error as Error).message);
     }
@@ -60,7 +58,6 @@ export const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  //container: { flex: 1, justifyContent: 'center', padding: 20 },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -68,7 +65,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     paddingHorizontal: 20,
   },
-  //input: { height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10, paddingHorizontal: 10, borderRadius: 10 },
   title: { fontSize: 30, textAlign: "center", marginBottom: 30 },
   button: {
     width: "100%",
