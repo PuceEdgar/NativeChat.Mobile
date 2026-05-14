@@ -1,31 +1,36 @@
-import { Stack, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
-import { secureStorage } from "../src/utils/secureStorage";
+import { AuthProvider, useAuth } from "@/src/contexts/AuthContext";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
 
-export default function RootLayout() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+function InitialLayout() {
+  const { userToken, isLoading } = useAuth();
+
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = await secureStorage.getItem("jwt");
-      setIsAuthenticated(!!token);
-    };
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated === null) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-
-    if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && inAuthGroup) {
-      router.replace("/");
+    if (isLoading) {
+      return;
     }
-  }, [isAuthenticated, segments]);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+    const inAppGroup = segments[0] === "(app)";
+
+    if (!userToken && inAppGroup) {
+      router.replace("/(auth)/login");
+    } else if (userToken && !inAppGroup) {
+      router.replace("/(app)");
+    }
+  }, [userToken, isLoading, segments]);
+
+  if (isLoading) return null;
+
+  return <Slot />;
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <InitialLayout />
+    </AuthProvider>
+  );
 }

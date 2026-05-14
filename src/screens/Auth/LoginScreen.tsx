@@ -1,13 +1,14 @@
+import { useAuth } from "@/src/contexts/AuthContext";
+import { Link } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { authService } from "../../services/authService";
-import { Link } from "expo-router";
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
+  const { login, userToken } = useAuth();
   const handleLogin = async () => {
     if (!username || !password) {
       Alert.alert("Error", "Please enter both username and password.");
@@ -15,8 +16,9 @@ export const LoginScreen = () => {
     }
 
     try {
-      await authService.login(username, password);
+      await login(username, password);
       // Navigation to Chat Screen would follow
+      //Alert.alert("Login success", `Token: ${userToken}`);
     } catch (error) {
       Alert.alert("Login Failed", (error as Error).message);
     }
@@ -47,7 +49,10 @@ export const LoginScreen = () => {
 
       <Pressable>
         <Text style={styles.signUp}>
-          Don't have an account? <Link href="/(auth)/signup" style={styles.signUpLink}>Sign Up</Link>
+          Don't have an account?{" "}
+          <Link href="/(auth)/signup" style={styles.signUpLink}>
+            Sign Up
+          </Link>
         </Text>
       </Pressable>
     </View>

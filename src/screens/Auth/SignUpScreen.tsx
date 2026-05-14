@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
@@ -20,8 +21,16 @@ export const SignUpScreen = () => {
     }
 
     try {
-      await authService.register(username, password);
-      Alert.alert("Success", "Account created! Please log in.");
+      const isRegistered = await authService.register(username, password);
+
+      if (isRegistered) {
+        Alert.alert("Success", "Account created! Please log in.");
+        router.push("/(auth)/login");
+      }
+      else {
+        Alert.alert("Failed", "Failed to register user.");
+      }
+      
     } catch (error) {
       Alert.alert("Registration Failed", (error as Error).message);
     }

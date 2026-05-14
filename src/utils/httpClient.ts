@@ -25,10 +25,8 @@ export const httpClient = {
       throw new Error(errorData.message || "Request failed");
     }
     console.log(response);
-
-    if (response.status === 201) {
-      //return void;
-    }
+    
     return response.json();
   },
+
 };
