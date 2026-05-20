@@ -7,6 +7,7 @@ interface AuthProps {
   register: Function;
   login: Function;
   logout: Function;
+  findUser: Function;
 }
 
 const AuthContext = createContext<AuthProps>({} as AuthProps);
@@ -14,7 +15,7 @@ const BASE_URL = "http://10.0.2.2:5048";
 
 export const AuthProvider = ({ children }: any) => {
   const [userToken, setUserToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const checkToken = async () => {
@@ -85,8 +86,28 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
+  const findUser = async (username: string) => {
+    try {
+      const token = await secureStorage.getItem("jwt");
+
+      if (token) {
+        const response = await fetch(`${BASE_URL}/user/find${username}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        });
+
+        if (response.status === 404) return null;
+        if (!response.ok) throw new Error("Search failed");
+
+        return await response.json();
+      }
+    } catch {}
+  };
+
   return (
-    <AuthContext.Provider value={{ userToken, isLoading, register, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ userToken, isLoading, register, login, logout, findUser }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
