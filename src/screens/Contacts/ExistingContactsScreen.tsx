@@ -1,13 +1,22 @@
 import { useContacts } from "@/src/contexts/ContactContext";
+import { useRouter } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function ExistingContactsScreen() {
   const { contacts } = useContacts();
+  const router = useRouter();
+
+  const handleStartChat = (contactUserId: number, contactUsername: string) => {
+    router.push({
+      pathname: "/chat",
+      params: { contactId: contactUserId.toString(), contactUsername },
+    });
+  };
 
   const renderContact = ({ item }: { item: any }) => (
     <View style={styles.contactItem}>
       <Text style={styles.contactText}>{item.contactUsername}</Text>
-      <Pressable style={styles.chatButton} onPress={() => console.log(`Starting chat with ${item.contactUsername}`)}>
+      <Pressable style={styles.chatButton} onPress={() => handleStartChat(item.contactUserId, item.contactUsername)}>
         <Text style={styles.buttonText}>Chat</Text>
       </Pressable>
     </View>

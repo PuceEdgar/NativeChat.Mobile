@@ -1,4 +1,5 @@
 import { AuthProvider, useAuth } from "@/src/contexts/AuthContext";
+import { ChatProvider } from "@/src/contexts/ChatContext";
 import { ContactProvider } from "@/src/contexts/ContactContext";
 import { InviteProvider } from "@/src/contexts/InviteContext";
 import { Slot, useRouter, useSegments } from "expo-router";
@@ -34,7 +35,9 @@ export default function RootLayout() {
     <AuthProvider>
       <InviteProvider>
         <ContactProvider>
-          <InitialLayout />
+          <ChatProvider>
+            <InitialLayout />
+          </ChatProvider>
         </ContactProvider>
       </InviteProvider>
     </AuthProvider>
