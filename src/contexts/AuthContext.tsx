@@ -91,12 +91,15 @@ export const AuthProvider = ({ children }: any) => {
       const token = await secureStorage.getItem("jwt");
 
       if (token) {
-        const response = await fetch(`${BASE_URL}/user/find${username}`, {
+        const response = await fetch(`${BASE_URL}/user/find/${username}`, {
           method: "GET",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
 
-        if (response.status === 404) return null;
+        if (response.status === 404) {
+          console.log(`user: ${username} not found!`);
+          return null;
+        }
         if (!response.ok) throw new Error("Search failed");
 
         return await response.json();

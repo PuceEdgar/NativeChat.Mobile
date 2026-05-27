@@ -1,4 +1,6 @@
 import { AuthProvider, useAuth } from "@/src/contexts/AuthContext";
+import { ContactProvider } from "@/src/contexts/ContactContext";
+import { InviteProvider } from "@/src/contexts/InviteContext";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 
@@ -18,7 +20,7 @@ function InitialLayout() {
     if (!userToken && inAppGroup) {
       router.replace("/(auth)/login");
     } else if (userToken && !inAppGroup) {
-      router.replace("/(app)");
+      router.replace("/(app)/(tabs)");
     }
   }, [userToken, isLoading, segments]);
 
@@ -30,7 +32,11 @@ function InitialLayout() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <InitialLayout />
+      <InviteProvider>
+        <ContactProvider>
+          <InitialLayout />
+        </ContactProvider>
+      </InviteProvider>
     </AuthProvider>
   );
 }
