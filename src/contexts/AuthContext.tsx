@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { secureStorage } from "../utils/secureStorage";
+import { CryptoService } from "../services/cryptoService";
 
 interface AuthProps {
   userToken: string | null;
@@ -37,9 +38,12 @@ export const AuthProvider = ({ children }: any) => {
 
   const register = async (username: string, password: string) => {
     try {
+      // Generate E2EE keys locally before registering
+      const { publicKey } = await CryptoService.getOrCreateKeyPair();
+
       const response = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, publicKey }),
         headers: {
           "Content-Type": "application/json",
         },
@@ -68,6 +72,14 @@ export const AuthProvider = ({ children }: any) => {
 
       if (response.ok && data.token) {
         await secureStorage.setItem("jwt", data.token);
+        
+        // Ensure local keys exist and server has the public key
+        const { publicKey } = await CryptoService.getOrCreateKeyPair();
+        await fetch(`${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${data.token}` },
+        });
+
         setUserToken(data.token); // Triggers re-render for navigation
       } else {
         throw new Error(data.message || "Login failed");

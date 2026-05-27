@@ -5,6 +5,7 @@ export interface Contact {
   id: number;
   contactUserId: number;
   contactUsername: string;
+  contactPublicKey: string;
   createdAt: string;
 }
 
