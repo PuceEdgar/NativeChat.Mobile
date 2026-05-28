@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 
 export interface Contact {
@@ -30,6 +30,7 @@ export const ContactProvider = ({ children }: { children: React.ReactNode }) => 
       });
       if (response.ok) {
         const data = await response.json();
+        console.log(data);
         setContacts(data);
       }
     } catch (error) {
@@ -50,8 +51,7 @@ export const ContactProvider = ({ children }: { children: React.ReactNode }) => 
       value={{
         contacts,
         refreshContacts,
-      }}
-    >
+      }}>
       {children}
     </ContactContext.Provider>
   );

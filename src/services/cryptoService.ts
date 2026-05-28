@@ -4,20 +4,31 @@ import { secureStorage } from "../utils/secureStorage";
 const PRIVATE_KEY_ALIAS = "nativechat_private_key";
 const PUBLIC_KEY_ALIAS = "nativechat_public_key";
 
+/**
+ * DEVELOPMENT FALLBACK:
+ * If the native module is null (Expo Go), we use a simple base64 "mock" 
+ * encryption so the app logic works without crashing.
+ * 
+ * IN PRODUCTION: This app requires the native RSA module for real security.
+ */
+const isNativeRSALoaded = !!RSA;
+
 export const CryptoService = {
-  /**
-   * Generates a new RSA-2048 key pair if one doesn't exist.
-   * Stores the private key in secure storage.
-   */
   getOrCreateKeyPair: async () => {
     let publicKey = await secureStorage.getItem(PUBLIC_KEY_ALIAS);
     let privateKey = await secureStorage.getItem(PRIVATE_KEY_ALIAS);
 
     if (!publicKey || !privateKey) {
-      console.log("Generating new RSA key pair...");
-      const keys = await RSA.generateKeys(2048);
-      publicKey = keys.public;
-      privateKey = keys.private;
+      if (isNativeRSALoaded) {
+        console.log("Generating Native RSA key pair...");
+        const keys = await RSA.generateKeys(2048);
+        publicKey = keys.public;
+        privateKey = keys.private;
+      } else {
+        console.warn("Native RSA not found. Using development mock keys.");
+        publicKey = "mock-public-key-" + Math.random();
+        privateKey = "mock-private-key-" + Math.random();
+      }
 
       await secureStorage.setItem(PUBLIC_KEY_ALIAS, publicKey);
       await secureStorage.setItem(PRIVATE_KEY_ALIAS, privateKey);
@@ -26,26 +37,35 @@ export const CryptoService = {
     return { publicKey, privateKey };
   },
 
-  /**
-   * Encrypts a message using the recipient's RSA Public Key.
-   */
   encrypt: async (message: string, recipientPublicKey: string) => {
     try {
-      return await RSA.encrypt(message, recipientPublicKey);
+      if (isNativeRSALoaded && !recipientPublicKey.startsWith("mock-")) {
+        return await RSA.encrypt(message, recipientPublicKey);
+      }
+      
+      // Fallback: simple encoding for development
+      console.log("Using Mock Encryption");
+      return "mock_enc_" + btoa(message);
     } catch (error) {
       console.error("Encryption failed", error);
       throw error;
     }
   },
 
-  /**
-   * Decrypts a message using our local RSA Private Key.
-   */
   decrypt: async (encryptedMessage: string) => {
     try {
-      const privateKey = await secureStorage.getItem(PRIVATE_KEY_ALIAS);
-      if (!privateKey) throw new Error("Private key not found");
-      return await RSA.decrypt(encryptedMessage, privateKey);
+      if (isNativeRSALoaded && !encryptedMessage.startsWith("mock_enc_")) {
+        const privateKey = await secureStorage.getItem(PRIVATE_KEY_ALIAS);
+        if (!privateKey) throw new Error("Private key not found");
+        return await RSA.decrypt(encryptedMessage, privateKey);
+      }
+
+      // Fallback: simple decoding for development
+      if (encryptedMessage.startsWith("mock_enc_")) {
+        return atob(encryptedMessage.replace("mock_enc_", ""));
+      }
+      
+      return encryptedMessage; // Return as-is if not mock
     } catch (error) {
       console.error("Decryption failed", error);
       throw error;

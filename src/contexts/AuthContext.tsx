@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { secureStorage } from "../utils/secureStorage";
 import { CryptoService } from "../services/cryptoService";
+import { secureStorage } from "../utils/secureStorage";
 
 interface AuthProps {
   userToken: string | null;
@@ -25,6 +25,13 @@ export const AuthProvider = ({ children }: any) => {
 
         if (token) {
           setUserToken(token);
+
+          // SELF-HEALING: Ensure old users get keys even if they didn't re-login
+          const { publicKey } = await CryptoService.getOrCreateKeyPair();
+          fetch(`${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch((err) => console.log("Background Key sync failed", err));
         }
       } catch (error) {
         console.error("Failed to load token", error);
@@ -71,8 +78,9 @@ export const AuthProvider = ({ children }: any) => {
       const data = await response.json();
 
       if (response.ok && data.token) {
+        console.log(data.token);
         await secureStorage.setItem("jwt", data.token);
-        
+
         // Ensure local keys exist and server has the public key
         const { publicKey } = await CryptoService.getOrCreateKeyPair();
         await fetch(`${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`, {
