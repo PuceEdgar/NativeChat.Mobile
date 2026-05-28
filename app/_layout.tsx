@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from "@/src/contexts/AuthContext";
 import { ChatProvider } from "@/src/contexts/ChatContext";
 import { ContactProvider } from "@/src/contexts/ContactContext";
 import { InviteProvider } from "@/src/contexts/InviteContext";
+import { TranslationProvider } from "@/src/contexts/TranslationContext";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 
@@ -35,9 +36,11 @@ export default function RootLayout() {
     <AuthProvider>
       <InviteProvider>
         <ContactProvider>
-          <ChatProvider>
-            <InitialLayout />
-          </ChatProvider>
+          <TranslationProvider>
+            <ChatProvider>
+              <InitialLayout />
+            </ChatProvider>
+          </TranslationProvider>
         </ContactProvider>
       </InviteProvider>
     </AuthProvider>
