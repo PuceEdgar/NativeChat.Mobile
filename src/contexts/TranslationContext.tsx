@@ -36,7 +36,9 @@ export const SUPPORTED_LANGUAGES = [
 interface TranslationContextProps {
   targetLanguage: string;
   setLanguage: (lang: string) => Promise<void>;
-  translate: (text: string) => Promise<string>;
+  inputLanguage: string;
+  setInputLanguage: (lang: string) => void;
+  translate: (text: string, sourceOverride?: string) => Promise<string>;
   isDownloading: boolean;
 }
 
@@ -44,6 +46,7 @@ const TranslationContext = createContext<TranslationContextProps>({} as Translat
 
 export const TranslationProvider = ({ children }: { children: React.ReactNode }) => {
   const [targetLanguage, setTargetLanguage] = useState("en");
+  const [inputLanguage, setInputLanguage] = useState("en");
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
@@ -53,6 +56,11 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
         setTargetLanguage(savedLang);
         // Pre-download model
         TranslationService.downloadModel(savedLang);
+      }
+      
+      const savedInputLang = await secureStorage.getItem("input_language");
+      if (savedInputLang) {
+        setInputLanguage(savedInputLang);
       }
     };
     loadLanguage();
@@ -68,15 +76,33 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
     setIsDownloading(false);
   };
 
-  const translate = async (text: string): Promise<string> => {
+  const setInputLang = async (lang: string) => {
+    setInputLanguage(lang);
+    await secureStorage.setItem("input_language", lang);
+    
+    // Download the model for input language too so identifying is faster/better
+    await TranslationService.downloadModel(lang);
+  };
+
+  const translate = async (text: string, sourceOverride?: string): Promise<string> => {
     if (!text || text.trim().length === 0) return "";
     
     try {
-      // 1. Identify source language
-      const sourceLang = await TranslationService.identifyLanguage(text);
+      // 1. Determine source language
+      // If we have an override (from the sender), use it! No need to guess.
+      let sourceLang = sourceOverride;
+      
+      if (!sourceLang) {
+        sourceLang = await TranslationService.identifyLanguage(text);
+      }
+      
+      // If language is undetermined or matches target, don't translate
+      if (sourceLang === "und" || sourceLang === targetLanguage) {
+        return text;
+      }
       
       // 2. Translate to target
-      return await TranslationService.translateText(text, sourceLang, targetLanguage);
+      return await TranslationService.translateText(text, sourceLang!, targetLanguage);
     } catch (error) {
       console.error("Translation logic error", error);
       return text;
@@ -84,7 +110,15 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
   };
 
   return (
-    <TranslationContext.Provider value={{ targetLanguage, setLanguage, translate, isDownloading }}>
+    <TranslationContext.Provider 
+      value={{ 
+        targetLanguage, 
+        setLanguage, 
+        inputLanguage, 
+        setInputLanguage: setInputLang, 
+        translate, 
+        isDownloading 
+      }}>
       {children}
     </TranslationContext.Provider>
   );

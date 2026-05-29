@@ -1,4 +1,6 @@
 import { useChat, Message } from "@/src/contexts/ChatContext";
+import { useTranslation, SUPPORTED_LANGUAGES } from "@/src/contexts/TranslationContext";
+import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -6,6 +8,7 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, 
 export default function Chat() {
   const { contactId, contactUsername } = useLocalSearchParams<{ contactId: string; contactUsername: string }>();
   const { messages, sendMessage, loadChatHistory } = useChat();
+  const { inputLanguage, setInputLanguage } = useTranslation();
   const [inputText, setInputText] = useState("");
 
   const chatMessages = messages[contactId!] || [];
@@ -67,7 +70,22 @@ export default function Chat() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{contactUsername}</Text>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>{contactUsername}</Text>
+          <Text style={styles.headerSub}>I'm typing in:</Text>
+        </View>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={inputLanguage}
+            onValueChange={(val) => setInputLanguage(val)}
+            style={styles.picker}
+            mode="dropdown"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <Picker.Item key={lang.value} label={lang.label} value={lang.value} style={styles.pickerItem} />
+            ))}
+          </Picker>
+        </View>
       </View>
 
       <FlatList
@@ -97,13 +115,35 @@ export default function Chat() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5" },
   header: {
-    padding: 15,
+    height: 70,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
+  headerInfo: {
+    flex: 1,
+  },
   headerTitle: { fontSize: 18, fontWeight: "bold" },
+  headerSub: { fontSize: 10, color: "#888", marginTop: 2 },
+  pickerContainer: {
+    flex: 1,
+    maxWidth: 150,
+    height: 40,
+    justifyContent: "center",
+    backgroundColor: "#c5e7f5"
+  },
+  picker: {
+    height: 60,
+    width: "100%",
+  },
+  pickerItem: {
+    fontSize: 14,
+  },
   listContent: { padding: 10, paddingBottom: 20 },
   messageWrapper: { marginBottom: 10, flexDirection: "row" },
   myMessageWrapper: { justifyContent: "flex-end" },

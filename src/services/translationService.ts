@@ -37,22 +37,23 @@ const Translator = getTranslator();
 const isMLKitAvailable = !!Translator;
 
 export const TranslationService = {
-  /**
-   * Identifies the language of the provided text.
-   * @returns ISO 639-1 tag (e.g., 'lv', 'en')
-   */
   identifyLanguage: async (text: string): Promise<string> => {
     // If Translator is null, we are in Mock mode.
     if (!isMLKitAvailable || !Translator) {
       return "en"; // Default for mocking
     }
     try {
-      // If we are in Expo Go, the library might throw a "linking error" inside its methods.
-      // We catch it and return "en" to trigger our mock translation logic.
-      return await Translator.identify(text);
-    } catch (e) {
-      console.warn("Native Translation methods threw error (likely Expo Go). Falling back to mock.");
-      return "en";
+      const result = await Translator.identify(text);
+      if (result === "und" || !result) return "und";
+      return result;
+    } catch (e: any) {
+      // "und" is a common error from ML Kit meaning "undetermined" 
+      // (usually because the text is too short). We handle it gracefully.
+      if (e?.message?.includes("und") || e === "und") {
+        return "und";
+      }
+      console.warn("Native Translation 'identify' failed. Error:", e);
+      return "und";
     }
   },
 
