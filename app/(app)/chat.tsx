@@ -1,7 +1,8 @@
-import { useChat } from "@/src/contexts/ChatContext";
+import { useChat, Message } from "@/src/contexts/ChatContext";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+
 export default function Chat() {
   const { contactId, contactUsername } = useLocalSearchParams<{ contactId: string; contactUsername: string }>();
   const { messages, sendMessage, loadChatHistory } = useChat();
@@ -29,13 +30,32 @@ export default function Chat() {
     }
   }, [chatMessages]);
 
-  const renderMessage = ({ item }: { item: any }) => {
+  const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.senderId === "me";
+    const hasTranslation = item.translatedContent && item.translatedContent !== item.content;
+
     return (
       <View style={[styles.messageWrapper, isMe ? styles.myMessageWrapper : styles.theirMessageWrapper]}>
         <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
           {!isMe && <Text style={styles.senderName}>{item.senderUsername}</Text>}
-          <Text style={isMe ? styles.myText : styles.theirText}>{item.content}</Text>
+          
+          {hasTranslation ? (
+            <>
+              <Text style={[isMe ? styles.myText : styles.theirText, styles.translatedText]}>
+                {item.translatedContent}
+              </Text>
+              <View style={styles.divider} />
+              <Text style={[isMe ? styles.myText : styles.theirText, styles.originalText]}>
+                {item.content}
+              </Text>
+            </>
+          ) : (
+            <Text style={isMe ? styles.myText : styles.theirText}>{item.content}</Text>
+          )}
+          
+          <Text style={[styles.timestampText, { color: isMe ? "rgba(255,255,255,0.7)" : "#888" }]}>
+            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
         </View>
       </View>
     );
@@ -88,12 +108,16 @@ const styles = StyleSheet.create({
   messageWrapper: { marginBottom: 10, flexDirection: "row" },
   myMessageWrapper: { justifyContent: "flex-end" },
   theirMessageWrapper: { justifyContent: "flex-start" },
-  messageBubble: { maxWidth: "80%", padding: 10, borderRadius: 15 },
-  myBubble: { backgroundColor: "#007AFF", borderBottomRightRadius: 2 },
-  theirBubble: { backgroundColor: "#fff", borderBottomLeftRadius: 2, borderWidth: 1, borderColor: "#eee" },
-  senderName: { fontSize: 12, color: "#888", marginBottom: 2 },
+  messageBubble: { maxWidth: "85%", padding: 12, borderRadius: 18 },
+  myBubble: { backgroundColor: "#007AFF", borderBottomRightRadius: 4 },
+  theirBubble: { backgroundColor: "#fff", borderBottomLeftRadius: 4, borderWidth: 1, borderColor: "#e0e0e0" },
+  senderName: { fontSize: 12, color: "#888", marginBottom: 4, fontWeight: "600" },
   myText: { color: "#fff", fontSize: 16 },
-  theirText: { color: "#333", fontSize: 16 },
+  theirText: { color: "#222", fontSize: 16 },
+  translatedText: { fontWeight: "500", marginBottom: 2 },
+  originalText: { fontSize: 13, opacity: 0.7, fontStyle: "italic" },
+  divider: { height: 1, backgroundColor: "rgba(0,0,0,0.1)", marginVertical: 6 },
+  timestampText: { fontSize: 10, alignSelf: "flex-end", marginTop: 4 },
   inputContainer: {
     flexDirection: "row",
     padding: 10,

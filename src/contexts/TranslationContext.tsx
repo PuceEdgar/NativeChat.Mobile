@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { secureStorage } from "../utils/secureStorage";
+import { TranslationService } from "../services/translationService";
 
 export const SUPPORTED_LANGUAGES = [
   { label: "English", value: "en" },
@@ -35,31 +36,55 @@ export const SUPPORTED_LANGUAGES = [
 interface TranslationContextProps {
   targetLanguage: string;
   setLanguage: (lang: string) => Promise<void>;
+  translate: (text: string) => Promise<string>;
+  isDownloading: boolean;
 }
 
 const TranslationContext = createContext<TranslationContextProps>({} as TranslationContextProps);
 
 export const TranslationProvider = ({ children }: { children: React.ReactNode }) => {
   const [targetLanguage, setTargetLanguage] = useState("en");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const loadLanguage = async () => {
       const savedLang = await secureStorage.getItem("preferred_language");
       if (savedLang) {
         setTargetLanguage(savedLang);
+        // Pre-download model
+        TranslationService.downloadModel(savedLang);
       }
     };
     loadLanguage();
   }, []);
 
   const setLanguage = async (lang: string) => {
+    setIsDownloading(true);
     setTargetLanguage(lang);
     await secureStorage.setItem("preferred_language", lang);
-    // Note: In the future, we could also sync this with the server's User profile
+    
+    // Trigger model download
+    await TranslationService.downloadModel(lang);
+    setIsDownloading(false);
+  };
+
+  const translate = async (text: string): Promise<string> => {
+    if (!text || text.trim().length === 0) return "";
+    
+    try {
+      // 1. Identify source language
+      const sourceLang = await TranslationService.identifyLanguage(text);
+      
+      // 2. Translate to target
+      return await TranslationService.translateText(text, sourceLang, targetLanguage);
+    } catch (error) {
+      console.error("Translation logic error", error);
+      return text;
+    }
   };
 
   return (
-    <TranslationContext.Provider value={{ targetLanguage, setLanguage }}>
+    <TranslationContext.Provider value={{ targetLanguage, setLanguage, translate, isDownloading }}>
       {children}
     </TranslationContext.Provider>
   );

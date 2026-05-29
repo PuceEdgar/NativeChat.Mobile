@@ -1,3 +1,4 @@
+import { Base64 } from "js-base64";
 import { RSA } from "react-native-rsa-native";
 import { secureStorage } from "../utils/secureStorage";
 
@@ -8,8 +9,6 @@ const PUBLIC_KEY_ALIAS = "nativechat_public_key";
  * DEVELOPMENT FALLBACK:
  * If the native module is null (Expo Go), we use a simple base64 "mock" 
  * encryption so the app logic works without crashing.
- * 
- * IN PRODUCTION: This app requires the native RSA module for real security.
  */
 const isNativeRSALoaded = !!RSA;
 
@@ -43,9 +42,9 @@ export const CryptoService = {
         return await RSA.encrypt(message, recipientPublicKey);
       }
       
-      // Fallback: simple encoding for development
-      console.log("Using Mock Encryption");
-      return "mock_enc_" + btoa(message);
+      // Fallback: UTF-8 safe encoding for development
+      console.log("Using UTF-8 Safe Mock Encryption");
+      return "mock_enc_" + Base64.encode(message);
     } catch (error) {
       console.error("Encryption failed", error);
       throw error;
@@ -60,12 +59,12 @@ export const CryptoService = {
         return await RSA.decrypt(encryptedMessage, privateKey);
       }
 
-      // Fallback: simple decoding for development
+      // Fallback: UTF-8 safe decoding for development
       if (encryptedMessage.startsWith("mock_enc_")) {
-        return atob(encryptedMessage.replace("mock_enc_", ""));
+        return Base64.decode(encryptedMessage.replace("mock_enc_", ""));
       }
       
-      return encryptedMessage; // Return as-is if not mock
+      return encryptedMessage; 
     } catch (error) {
       console.error("Decryption failed", error);
       throw error;
