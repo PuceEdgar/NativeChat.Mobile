@@ -12,7 +12,7 @@ interface AuthProps {
 }
 
 const AuthContext = createContext<AuthProps>({} as AuthProps);
-const BASE_URL = "http://10.0.2.2:5048";
+const BASE_URL = "https://nativechat.isharetime.com"; //"http://10.0.2.2:5048";
 
 export const AuthProvider = ({ children }: any) => {
   const [userToken, setUserToken] = useState<string | null>(null);
@@ -28,10 +28,13 @@ export const AuthProvider = ({ children }: any) => {
 
           // SELF-HEALING: Ensure old users get keys even if they didn't re-login
           const { publicKey } = await CryptoService.getOrCreateKeyPair();
-          fetch(`${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          }).catch((err) => console.log("Background Key sync failed", err));
+          fetch(
+            `${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ).catch((err) => console.log("Background Key sync failed", err));
         }
       } catch (error) {
         console.error("Failed to load token", error);
@@ -83,10 +86,13 @@ export const AuthProvider = ({ children }: any) => {
 
         // Ensure local keys exist and server has the public key
         const { publicKey } = await CryptoService.getOrCreateKeyPair();
-        await fetch(`${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${data.token}` },
-        });
+        await fetch(
+          `${BASE_URL}/user/update-public-key?publicKey=${encodeURIComponent(publicKey)}`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${data.token}` },
+          },
+        );
 
         setUserToken(data.token); // Triggers re-render for navigation
       } else {
@@ -113,7 +119,10 @@ export const AuthProvider = ({ children }: any) => {
       if (token) {
         const response = await fetch(`${BASE_URL}/user/find/${username}`, {
           method: "GET",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (response.status === 404) {
@@ -128,7 +137,9 @@ export const AuthProvider = ({ children }: any) => {
   };
 
   return (
-    <AuthContext.Provider value={{ userToken, isLoading, register, login, logout, findUser }}>
+    <AuthContext.Provider
+      value={{ userToken, isLoading, register, login, logout, findUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

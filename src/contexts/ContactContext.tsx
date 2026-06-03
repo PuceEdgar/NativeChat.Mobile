@@ -14,11 +14,17 @@ interface ContactContextProps {
   refreshContacts: () => Promise<void>;
 }
 
-const ContactContext = createContext<ContactContextProps>({} as ContactContextProps);
+const ContactContext = createContext<ContactContextProps>(
+  {} as ContactContextProps,
+);
 
-const BASE_URL = "http://10.0.2.2:5048";
+const BASE_URL = "https://nativechat.isharetime.com"; //"http://10.0.2.2:5048";
 
-export const ContactProvider = ({ children }: { children: React.ReactNode }) => {
+export const ContactProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const { userToken } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
 
@@ -51,7 +57,8 @@ export const ContactProvider = ({ children }: { children: React.ReactNode }) => 
       value={{
         contacts,
         refreshContacts,
-      }}>
+      }}
+    >
       {children}
     </ContactContext.Provider>
   );

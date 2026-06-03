@@ -1,4 +1,5 @@
-import FastTranslator, { Languages } from "fast-mlkit-translate-text";
+import FastTranslator from "fast-mlkit-translate-text";
+import { Alert } from "react-native";
 
 /**
  * Robust detection for ML Kit native module.
@@ -18,18 +19,26 @@ const getTranslator = () => {
   }
 
   // 2. Default wrap check (common in Metro/CommonJS interop)
-  if ((FastTranslator as any).default && typeof (FastTranslator as any).default.identify === "function") {
+  if (
+    (FastTranslator as any).default &&
+    typeof (FastTranslator as any).default.identify === "function"
+  ) {
     return (FastTranslator as any).default;
   }
 
   // 3. Last resort: check if it's the class itself being exported as a named export
   // (unlikely given the import statement, but good for robustness)
-  const { FastTranslator: NamedTranslator } = require("fast-mlkit-translate-text");
+  const {
+    FastTranslator: NamedTranslator,
+  } = require("fast-mlkit-translate-text");
   if (NamedTranslator && typeof NamedTranslator.identify === "function") {
     return NamedTranslator;
   }
 
-  console.warn("FastTranslator found but 'identify' method is missing. Structure:", JSON.stringify(FastTranslator));
+  console.warn(
+    "FastTranslator found but 'identify' method is missing. Structure:",
+    JSON.stringify(FastTranslator),
+  );
   return null;
 };
 
@@ -47,7 +56,7 @@ export const TranslationService = {
       if (result === "und" || !result) return "und";
       return result;
     } catch (e: any) {
-      // "und" is a common error from ML Kit meaning "undetermined" 
+      // "und" is a common error from ML Kit meaning "undetermined"
       // (usually because the text is too short). We handle it gracefully.
       if (e?.message?.includes("und") || e === "und") {
         return "und";
@@ -62,7 +71,11 @@ export const TranslationService = {
    * @param sourceTag ISO 639-1 tag (e.g., 'lv')
    * @param targetTag ISO 639-1 tag (e.g., 'en')
    */
-  translateText: async (text: string, sourceTag: string, targetTag: string): Promise<string> => {
+  translateText: async (
+    text: string,
+    sourceTag: string,
+    targetTag: string,
+  ): Promise<string> => {
     if (sourceTag === targetTag || !text) return text;
 
     // Use isMLKitAvailable check or a try-catch to trigger mock mode
@@ -77,7 +90,9 @@ export const TranslationService = {
       const targetLang = Translator.languageFromTag(targetTag);
 
       if (!sourceLang || !targetLang) {
-        throw new Error(`Unsupported tags: source=${sourceTag}, target=${targetTag}`);
+        throw new Error(
+          `Unsupported tags: source=${sourceTag}, target=${targetTag}`,
+        );
       }
 
       await Translator.prepare({
@@ -97,7 +112,10 @@ export const TranslationService = {
    * Pre-downloads a language model.
    * @param langTag ISO 639-1 tag (e.g., 'lv')
    */
-  downloadModel: async (langTag: string) => {
+  downloadModel: async (
+    langTag: string,
+    setIsLanguageAlreadyDownloaded: Function,
+  ) => {
     if (!isMLKitAvailable || !Translator) return;
     try {
       const lang = Translator.languageFromTag(langTag);
@@ -107,14 +125,27 @@ export const TranslationService = {
       }
 
       const isDownloaded = await Translator.isLanguageDownloaded(lang);
+      console.log(
+        `translationservice, is language downloaded: ${isDownloaded}`,
+      );
+      setIsLanguageAlreadyDownloaded(isDownloaded);
       if (!isDownloaded) {
         console.log(`Downloading ML Kit model for: ${lang}`);
         await Translator.downloadLanguageModel(lang);
+        Alert.alert("Success!", `${lang} language has been downloaded! `);
       }
     } catch (e) {
       // Silent fail for models in development
       console.error(e);
+      Alert.alert("Error!", `$Failed to download language! `);
     }
   },
-  };
 
+  isLanguageDownloaded: async (langTag: string) => {
+    if (!isMLKitAvailable || !Translator) return;
+
+    const lang = Translator.languageFromTag(langTag);
+
+    return await await Translator.isLanguageDownloaded(lang);
+  },
+};

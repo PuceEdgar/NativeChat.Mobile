@@ -18,9 +18,11 @@ interface InviteContextProps {
   rejectInvite: (id: number) => Promise<boolean>;
 }
 
-const InviteContext = createContext<InviteContextProps>({} as InviteContextProps);
+const InviteContext = createContext<InviteContextProps>(
+  {} as InviteContextProps,
+);
 
-const BASE_URL = "http://10.0.2.2:5048";
+const BASE_URL = "https://nativechat.isharetime.com"; //"http://10.0.2.2:5048";
 
 export const InviteProvider = ({ children }: { children: React.ReactNode }) => {
   const { userToken } = useAuth();
@@ -51,10 +53,13 @@ export const InviteProvider = ({ children }: { children: React.ReactNode }) => {
 
   const sendInvite = async (username: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/invites/send?targetUsername=${username}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${userToken}` },
-      });
+      const response = await fetch(
+        `${BASE_URL}/invites/send?targetUsername=${username}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${userToken}` },
+        },
+      );
       return response.ok;
     } catch (error) {
       console.error("Failed to send invite", error);

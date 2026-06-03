@@ -1,10 +1,19 @@
 import { decode as base64Decode } from "js-base64";
-import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  LogLevel,
+} from "@microsoft/signalr";
 import * as SQLite from "expo-sqlite";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { BiometricService } from "../services/biometricService";
 import { CryptoService } from "../services/cryptoService";
-import { getAllLocalChats, getLocalMessages, initDatabase, saveLocalMessage } from "../utils/database";
+import {
+  getAllLocalChats,
+  getLocalMessages,
+  initDatabase,
+  saveLocalMessage,
+} from "../utils/database";
 import { useAuth } from "./AuthContext";
 import { useContacts } from "./ContactContext";
 import { useTranslation } from "./TranslationContext";
@@ -27,7 +36,7 @@ interface ChatContextProps {
 
 const ChatContext = createContext<ChatContextProps>({} as ChatContextProps);
 
-const HUB_URL = "http://10.0.2.2:5048/chatHub";
+const HUB_URL = "https://nativechat.isharetime.com/chatHub"; //"http://10.0.2.2:5048/chatHub";
 
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const { userToken } = useAuth();
@@ -46,7 +55,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       const payload = userToken.split(".")[1];
       // Use base64Decode from js-base64 for cross-platform reliability
       const decoded = JSON.parse(base64Decode(payload));
-      return decoded.nameid || decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+      return (
+        decoded.nameid ||
+        decoded[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+        ]
+      );
     } catch (e) {
       console.error("Failed to decode token", e);
       return null;
@@ -75,11 +89,15 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             // Ensure chatId is a string and not our own ID or "me"
             const chatIdStr = msg.chatId.toString();
-            if (chatIdStr === "me" || chatIdStr === myUserId?.toString()) continue;
+            if (chatIdStr === "me" || chatIdStr === myUserId?.toString())
+              continue;
 
             const content = await CryptoService.decrypt(msg.content);
             // Use stored senderLanguage for accurate translation
-            const translatedContent = await translate(content, msg.senderLanguage);
+            const translatedContent = await translate(
+              content,
+              msg.senderLanguage,
+            );
 
             initialMessages[chatIdStr] = [
               {
@@ -91,7 +109,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
               },
             ];
           } catch (e) {
-            console.error(`Failed to decrypt last message for ${msg.chatId}`, e);
+            console.error(
+              `Failed to decrypt last message for ${msg.chatId}`,
+              e,
+            );
           }
         }
 
@@ -115,20 +136,24 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         for (const [chatId, chatHistory] of Object.entries(messages)) {
           // Re-load the history to get the original senderLanguages for better re-translation
           const encryptedHistory = await getLocalMessages(db, chatId);
-          
+
           updatedMessages[chatId] = await Promise.all(
             encryptedHistory.map(async (msg) => {
               const content = await CryptoService.decrypt(msg.content);
-              const isMe = msg.senderId.toString() === "me" || msg.senderId.toString() === myUserId?.toString();
-              
+              const isMe =
+                msg.senderId.toString() === "me" ||
+                msg.senderId.toString() === myUserId?.toString();
+
               return {
                 senderId: msg.senderId.toString(),
                 senderUsername: msg.senderUsername,
                 timestamp: msg.timestamp,
                 content,
-                translatedContent: isMe ? content : await translate(content, msg.senderLanguage),
+                translatedContent: isMe
+                  ? content
+                  : await translate(content, msg.senderLanguage),
               };
-            })
+            }),
           );
         }
         setMessages(updatedMessages);
@@ -152,7 +177,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         encryptedHistory.map(async (msg: any) => {
           try {
             const content = await CryptoService.decrypt(msg?.content);
-            const translatedContent = await translate(content, msg.senderLanguage);
+            const translatedContent = await translate(
+              content,
+              msg.senderLanguage,
+            );
             return {
               senderId: msg.senderId.toString(),
               senderUsername: msg.senderUsername,
@@ -162,11 +190,11 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             };
           } catch (e) {
             console.error(`error in decrypt history: ${e}`);
-            return { 
+            return {
               senderId: msg.senderId.toString(),
               senderUsername: msg.senderUsername,
               timestamp: new Date(msg.timestamp),
-              content: "[Decryption Failed]" 
+              content: "[Decryption Failed]",
             };
           }
         }),
@@ -225,10 +253,15 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   // Handle Message Listener (separate from connection start to avoid re-starting on translate change)
   useEffect(() => {
     if (isConnected && connection && db && myUserId) {
-      const handler = async (senderIdRaw: any, senderUsername: string, senderLanguage: string, encryptedContent: string) => {
+      const handler = async (
+        senderIdRaw: any,
+        senderUsername: string,
+        senderLanguage: string,
+        encryptedContent: string,
+      ) => {
         try {
           const senderId = senderIdRaw.toString();
-          
+
           // Ignore messages sent by me (sync is not implemented via SignalR receive)
           if (senderId === myUserId.toString()) {
             console.log("Ignoring echo message from self");
@@ -236,7 +269,14 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           // 1. Save encrypted content directly to Local DB
-          await saveLocalMessage(db, senderId, senderId, senderUsername, senderLanguage, encryptedContent);
+          await saveLocalMessage(
+            db,
+            senderId,
+            senderId,
+            senderUsername,
+            senderLanguage,
+            encryptedContent,
+          );
 
           // 2. Decrypt for local state
           const content = await CryptoService.decrypt(encryptedContent);
@@ -277,23 +317,46 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     if (connection && isConnected && db) {
       try {
         // Find recipient's public key
-        const contact = contacts.find((c) => c.contactUserId.toString() === targetUserId);
+        const contact = contacts.find(
+          (c) => c.contactUserId.toString() === targetUserId,
+        );
         if (!contact || !contact.contactPublicKey) {
-          throw new Error("Recipient public key not found. Connection is not secure.");
+          throw new Error(
+            "Recipient public key not found. Connection is not secure.",
+          );
         }
 
         // 1. Encrypt for recipient (Transit)
-        const encryptedForRecipient = await CryptoService.encrypt(content, contact.contactPublicKey);
+        const encryptedForRecipient = await CryptoService.encrypt(
+          content,
+          contact.contactPublicKey,
+        );
 
         // 2. Encrypt for self (Local Storage)
-        const { publicKey: myPublicKey } = await CryptoService.getOrCreateKeyPair();
-        const encryptedForMe = await CryptoService.encrypt(content, myPublicKey);
+        const { publicKey: myPublicKey } =
+          await CryptoService.getOrCreateKeyPair();
+        const encryptedForMe = await CryptoService.encrypt(
+          content,
+          myPublicKey,
+        );
 
         // 3. Send encrypted message to server (passing our inputLanguage)
-        await connection.invoke("SendMessageToUser", targetUserId, inputLanguage, encryptedForRecipient);
+        await connection.invoke(
+          "SendMessageToUser",
+          targetUserId,
+          inputLanguage,
+          encryptedForRecipient,
+        );
 
         // 4. Save "encrypted for me" version to Local DB
-        await saveLocalMessage(db, targetUserId, "me", "Me", inputLanguage, encryptedForMe);
+        await saveLocalMessage(
+          db,
+          targetUserId,
+          "me",
+          "Me",
+          inputLanguage,
+          encryptedForMe,
+        );
 
         // 5. Update local state with plain text for immediate view
         const newMessage: Message = {
@@ -319,7 +382,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <ChatContext.Provider value={{ messages, sendMessage, loadChatHistory, isConnected, isLocked }}>
+    <ChatContext.Provider
+      value={{ messages, sendMessage, loadChatHistory, isConnected, isLocked }}
+    >
       {children}
     </ChatContext.Provider>
   );

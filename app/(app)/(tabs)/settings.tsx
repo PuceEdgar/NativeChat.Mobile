@@ -1,12 +1,22 @@
 import { useAuth } from "@/src/contexts/AuthContext";
-import { useTranslation, SUPPORTED_LANGUAGES } from "@/src/contexts/TranslationContext";
+import {
+  SUPPORTED_LANGUAGES,
+  useTranslation,
+} from "@/src/contexts/TranslationContext";
 import { Picker } from "@react-native-picker/picker";
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Settings() {
   const { logout } = useAuth();
-  const { targetLanguage, setLanguage } = useTranslation();
+  const { targetLanguage, setLanguage, isLanguageAlreadyDownloaded } =
+    useTranslation();
+  const [selectedLanguage, setSelectedLanguage] = useState(targetLanguage);
 
+  function changeLanguage(lang: string) {
+    setLanguage(lang);
+  }
+  console.log(`is downloaded: ${isLanguageAlreadyDownloaded}`);
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.header}>App Settings</Text>
@@ -14,7 +24,8 @@ export default function Settings() {
       <View style={styles.section}>
         <Text style={styles.label}>Translation Language</Text>
         <Text style={styles.description}>
-          All incoming messages will be automatically translated to this language.
+          All incoming messages will be automatically translated to this
+          language.
         </Text>
         <View style={styles.pickerContainer}>
           <Picker
@@ -23,9 +34,30 @@ export default function Settings() {
             style={styles.picker}
           >
             {SUPPORTED_LANGUAGES.map((lang) => (
-              <Picker.Item key={lang.value} label={lang.label} value={lang.value} />
+              <Picker.Item
+                key={lang.value}
+                label={lang.label}
+                value={lang.value}
+              />
             ))}
           </Picker>
+        </View>
+        <View>
+          {!isLanguageAlreadyDownloaded ? (
+            <Pressable onPress={() => changeLanguage(selectedLanguage)}>
+              <Text
+                style={{
+                  borderColor: "black",
+                  borderWidth: 2,
+                  display: "flex",
+                }}
+              >
+                Download Language
+              </Text>
+            </Pressable>
+          ) : (
+            <Text>Language downloaded</Text>
+          )}
         </View>
       </View>
 

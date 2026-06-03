@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { secureStorage } from "../utils/secureStorage";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { TranslationService } from "../services/translationService";
+import { secureStorage } from "../utils/secureStorage";
 
 export const SUPPORTED_LANGUAGES = [
   { label: "English", value: "en" },
@@ -40,14 +40,23 @@ interface TranslationContextProps {
   setInputLanguage: (lang: string) => void;
   translate: (text: string, sourceOverride?: string) => Promise<string>;
   isDownloading: boolean;
+  isLanguageAlreadyDownloaded: boolean;
 }
 
-const TranslationContext = createContext<TranslationContextProps>({} as TranslationContextProps);
+const TranslationContext = createContext<TranslationContextProps>(
+  {} as TranslationContextProps,
+);
 
-export const TranslationProvider = ({ children }: { children: React.ReactNode }) => {
+export const TranslationProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [targetLanguage, setTargetLanguage] = useState("en");
   const [inputLanguage, setInputLanguage] = useState("en");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isLanguageAlreadyDownloaded, setIsLanguageAlreadyDownloaded] =
+    useState(false);
 
   useEffect(() => {
     const loadLanguage = async () => {
@@ -55,9 +64,12 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
       if (savedLang) {
         setTargetLanguage(savedLang);
         // Pre-download model
-        TranslationService.downloadModel(savedLang);
+        TranslationService.downloadModel(
+          savedLang,
+          setIsLanguageAlreadyDownloaded,
+        );
       }
-      
+
       const savedInputLang = await secureStorage.getItem("input_language");
       if (savedInputLang) {
         setInputLanguage(savedInputLang);
@@ -70,39 +82,52 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
     setIsDownloading(true);
     setTargetLanguage(lang);
     await secureStorage.setItem("preferred_language", lang);
-    
+    console.log(`set language was called!`);
     // Trigger model download
-    await TranslationService.downloadModel(lang);
+    await TranslationService.downloadModel(
+      lang,
+      setIsLanguageAlreadyDownloaded,
+    );
     setIsDownloading(false);
   };
 
   const setInputLang = async (lang: string) => {
     setInputLanguage(lang);
     await secureStorage.setItem("input_language", lang);
-    
+
     // Download the model for input language too so identifying is faster/better
-    await TranslationService.downloadModel(lang);
+    await TranslationService.downloadModel(
+      lang,
+      setIsLanguageAlreadyDownloaded,
+    );
   };
 
-  const translate = async (text: string, sourceOverride?: string): Promise<string> => {
+  const translate = async (
+    text: string,
+    sourceOverride?: string,
+  ): Promise<string> => {
     if (!text || text.trim().length === 0) return "";
-    
+
     try {
       // 1. Determine source language
       // If we have an override (from the sender), use it! No need to guess.
       let sourceLang = sourceOverride;
-      
+
       if (!sourceLang) {
         sourceLang = await TranslationService.identifyLanguage(text);
       }
-      
+
       // If language is undetermined or matches target, don't translate
       if (sourceLang === "und" || sourceLang === targetLanguage) {
         return text;
       }
-      
+
       // 2. Translate to target
-      return await TranslationService.translateText(text, sourceLang!, targetLanguage);
+      return await TranslationService.translateText(
+        text,
+        sourceLang!,
+        targetLanguage,
+      );
     } catch (error) {
       console.error("Translation logic error", error);
       return text;
@@ -110,15 +135,17 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
   };
 
   return (
-    <TranslationContext.Provider 
-      value={{ 
-        targetLanguage, 
-        setLanguage, 
-        inputLanguage, 
-        setInputLanguage: setInputLang, 
-        translate, 
-        isDownloading 
-      }}>
+    <TranslationContext.Provider
+      value={{
+        targetLanguage,
+        setLanguage,
+        inputLanguage,
+        setInputLanguage: setInputLang,
+        translate,
+        isDownloading,
+        isLanguageAlreadyDownloaded,
+      }}
+    >
       {children}
     </TranslationContext.Provider>
   );
