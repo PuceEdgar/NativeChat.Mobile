@@ -132,6 +132,7 @@ export const TranslationService = {
       if (!isDownloaded) {
         console.log(`Downloading ML Kit model for: ${lang}`);
         await Translator.downloadLanguageModel(lang);
+        setIsLanguageAlreadyDownloaded(true);
         Alert.alert("Success!", `${lang} language has been downloaded! `);
       }
     } catch (e) {

@@ -41,22 +41,16 @@ interface TranslationContextProps {
   translate: (text: string, sourceOverride?: string) => Promise<string>;
   isDownloading: boolean;
   isLanguageAlreadyDownloaded: boolean;
+  downloadSelectedLanguage: (lang: string) => Promise<void>;
 }
 
-const TranslationContext = createContext<TranslationContextProps>(
-  {} as TranslationContextProps,
-);
+const TranslationContext = createContext<TranslationContextProps>({} as TranslationContextProps);
 
-export const TranslationProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const TranslationProvider = ({ children }: { children: React.ReactNode }) => {
   const [targetLanguage, setTargetLanguage] = useState("en");
   const [inputLanguage, setInputLanguage] = useState("en");
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isLanguageAlreadyDownloaded, setIsLanguageAlreadyDownloaded] =
-    useState(false);
+  const [isLanguageAlreadyDownloaded, setIsLanguageAlreadyDownloaded] = useState(false);
 
   useEffect(() => {
     const loadLanguage = async () => {
@@ -64,10 +58,7 @@ export const TranslationProvider = ({
       if (savedLang) {
         setTargetLanguage(savedLang);
         // Pre-download model
-        TranslationService.downloadModel(
-          savedLang,
-          setIsLanguageAlreadyDownloaded,
-        );
+        TranslationService.downloadModel(savedLang, setIsLanguageAlreadyDownloaded);
       }
 
       const savedInputLang = await secureStorage.getItem("input_language");
@@ -79,15 +70,24 @@ export const TranslationProvider = ({
   }, []);
 
   const setLanguage = async (lang: string) => {
-    setIsDownloading(true);
+    //setIsDownloading(true);
     setTargetLanguage(lang);
     await secureStorage.setItem("preferred_language", lang);
     console.log(`set language was called!`);
     // Trigger model download
-    await TranslationService.downloadModel(
-      lang,
-      setIsLanguageAlreadyDownloaded,
-    );
+    // await TranslationService.downloadModel(
+    //   lang,
+    //   setIsLanguageAlreadyDownloaded,
+    // );
+    //setIsDownloading(false);
+    const isDownloaded = await TranslationService.isLanguageDownloaded(lang);
+    setIsLanguageAlreadyDownloaded(isDownloaded);
+  };
+
+  const downloadSelectedLanguage = async (lang: string) => {
+    setIsDownloading(true);
+    // Trigger model download
+    await TranslationService.downloadModel(lang, setIsLanguageAlreadyDownloaded);
     setIsDownloading(false);
   };
 
@@ -96,16 +96,10 @@ export const TranslationProvider = ({
     await secureStorage.setItem("input_language", lang);
 
     // Download the model for input language too so identifying is faster/better
-    await TranslationService.downloadModel(
-      lang,
-      setIsLanguageAlreadyDownloaded,
-    );
+    await TranslationService.downloadModel(lang, setIsLanguageAlreadyDownloaded);
   };
 
-  const translate = async (
-    text: string,
-    sourceOverride?: string,
-  ): Promise<string> => {
+  const translate = async (text: string, sourceOverride?: string): Promise<string> => {
     if (!text || text.trim().length === 0) return "";
 
     try {
@@ -123,11 +117,7 @@ export const TranslationProvider = ({
       }
 
       // 2. Translate to target
-      return await TranslationService.translateText(
-        text,
-        sourceLang!,
-        targetLanguage,
-      );
+      return await TranslationService.translateText(text, sourceLang!, targetLanguage);
     } catch (error) {
       console.error("Translation logic error", error);
       return text;
@@ -144,8 +134,8 @@ export const TranslationProvider = ({
         translate,
         isDownloading,
         isLanguageAlreadyDownloaded,
-      }}
-    >
+        downloadSelectedLanguage,
+      }}>
       {children}
     </TranslationContext.Provider>
   );

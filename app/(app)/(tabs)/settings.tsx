@@ -1,21 +1,19 @@
 import { useAuth } from "@/src/contexts/AuthContext";
-import {
-  SUPPORTED_LANGUAGES,
-  useTranslation,
-} from "@/src/contexts/TranslationContext";
+import { SUPPORTED_LANGUAGES, useTranslation } from "@/src/contexts/TranslationContext";
 import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Settings() {
   const { logout } = useAuth();
-  const { targetLanguage, setLanguage, isLanguageAlreadyDownloaded } =
-    useTranslation();
+  const { targetLanguage, setLanguage, isLanguageAlreadyDownloaded, downloadSelectedLanguage, isDownloading } = useTranslation();
   const [selectedLanguage, setSelectedLanguage] = useState(targetLanguage);
 
-  function changeLanguage(lang: string) {
+  function changeSelectedLanguage(lang: string) {
+    setSelectedLanguage(lang);
     setLanguage(lang);
   }
+
   console.log(`is downloaded: ${isLanguageAlreadyDownloaded}`);
   return (
     <ScrollView style={styles.container}>
@@ -23,40 +21,35 @@ export default function Settings() {
 
       <View style={styles.section}>
         <Text style={styles.label}>Translation Language</Text>
-        <Text style={styles.description}>
-          All incoming messages will be automatically translated to this
-          language.
-        </Text>
+        <Text style={styles.description}>All incoming messages will be automatically translated to this language.</Text>
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={targetLanguage}
-            onValueChange={(itemValue) => setLanguage(itemValue)}
-            style={styles.picker}
-          >
+            onValueChange={(itemValue) => changeSelectedLanguage(itemValue)}
+            style={styles.picker}>
             {SUPPORTED_LANGUAGES.map((lang) => (
-              <Picker.Item
-                key={lang.value}
-                label={lang.label}
-                value={lang.value}
-              />
+              <Picker.Item key={lang.value} label={lang.label} value={lang.value} />
             ))}
           </Picker>
         </View>
-        <View>
+        <View style={styles.footer}>
           {!isLanguageAlreadyDownloaded ? (
-            <Pressable onPress={() => changeLanguage(selectedLanguage)}>
+            
+            <Pressable onPress={() => downloadSelectedLanguage(selectedLanguage)}>
               <Text
                 style={{
                   borderColor: "black",
                   borderWidth: 2,
                   display: "flex",
-                }}
-              >
+                  padding: 10,
+                  fontSize: 16,
+                  borderRadius: 15,
+                }}>
                 Download Language
               </Text>
             </Pressable>
           ) : (
-            <Text>Language downloaded</Text>
+            <Text style={styles.infoLabel}>Language downloaded</Text>
           )}
         </View>
       </View>
@@ -139,8 +132,8 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   footer: {
-    marginTop: 20,
-    marginBottom: 40,
+    marginTop: 30,
+    marginBottom: 20,
     alignItems: "center",
     gap: 15,
   },
