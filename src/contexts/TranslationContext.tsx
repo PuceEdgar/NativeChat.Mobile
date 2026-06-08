@@ -39,6 +39,7 @@ interface TranslationContextProps {
   inputLanguage: string;
   setInputLanguage: (lang: string) => void;
   translate: (text: string, sourceOverride?: string) => Promise<string>;
+  translateToBridge: (text: string) => Promise<string>;
   isDownloading: boolean;
   isLanguageAlreadyDownloaded: boolean;
   downloadSelectedLanguage: (lang: string) => Promise<void>;
@@ -99,6 +100,20 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
     await TranslationService.downloadModel(lang, setIsLanguageAlreadyDownloaded);
   };
 
+  /**
+   * Translates native input to English (The Bridge).
+   * Used by the sender.
+   */
+  const translateToBridge = async (text: string): Promise<string> => {
+    if (!text || inputLanguage === "en") return text;
+    try {
+      return await TranslationService.translateText(text, inputLanguage, "en");
+    } catch (error) {
+      console.error("Failed to translate to bridge", error);
+      return text;
+    }
+  };
+
   const translate = async (text: string, sourceOverride?: string): Promise<string> => {
     if (!text || text.trim().length === 0) return "";
 
@@ -132,6 +147,7 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
         inputLanguage,
         setInputLanguage: setInputLang,
         translate,
+        translateToBridge,
         isDownloading,
         isLanguageAlreadyDownloaded,
         downloadSelectedLanguage,

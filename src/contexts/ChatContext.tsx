@@ -94,10 +94,23 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             if (chatIdStr === "me" || chatIdStr === myUserId?.toString())
               continue;
 
-            const content = await CryptoService.decrypt(msg.content);
+            const decryptedRaw = await CryptoService.decrypt(msg.content);
+            let content = decryptedRaw;
+            let bridge = decryptedRaw;
+
+            try {
+              const data = JSON.parse(decryptedRaw);
+              if (data.o && data.b) {
+                content = data.o;
+                bridge = data.b;
+              }
+            } catch (e) {
+              // Not JSON
+            }
+
             // Use stored senderLanguage for accurate translation
             const translatedContent = await translate(
-              content,
+              bridge,
               msg.senderLanguage,
             );
 
@@ -141,7 +154,20 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
           updatedMessages[chatId] = await Promise.all(
             encryptedHistory.map(async (msg) => {
-              const content = await CryptoService.decrypt(msg.content);
+              const decryptedRaw = await CryptoService.decrypt(msg.content);
+              let content = decryptedRaw;
+              let bridge = decryptedRaw;
+
+              try {
+                const data = JSON.parse(decryptedRaw);
+                if (data.o && data.b) {
+                  content = data.o;
+                  bridge = data.b;
+                }
+              } catch (e) {
+                // Not JSON
+              }
+
               const isMe =
                 msg.senderId.toString() === "me" ||
                 msg.senderId.toString() === myUserId?.toString();
@@ -153,7 +179,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
                 content,
                 translatedContent: isMe
                   ? content
-                  : await translate(content, msg.senderLanguage),
+                  : await translate(bridge, msg.senderLanguage),
               };
             }),
           );
@@ -178,9 +204,22 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       const decryptedHistory = await Promise.all(
         encryptedHistory.map(async (msg: any) => {
           try {
-            const content = await CryptoService.decrypt(msg?.content);
+            const decryptedRaw = await CryptoService.decrypt(msg?.content);
+            let content = decryptedRaw;
+            let bridge = decryptedRaw;
+
+            try {
+              const data = JSON.parse(decryptedRaw);
+              if (data.o && data.b) {
+                content = data.o;
+                bridge = data.b;
+              }
+            } catch (e) {
+              // Not JSON
+            }
+
             const translatedContent = await translate(
-              content,
+              bridge,
               msg.senderLanguage,
             );
             return {
@@ -281,15 +320,27 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           );
 
           // 2. Decrypt for local state
-          const content = await CryptoService.decrypt(encryptedContent);
+          const decryptedRaw = await CryptoService.decrypt(encryptedContent);
+          let content = decryptedRaw;
+          let bridge = decryptedRaw;
 
-          // 3. Auto-Translate (using explicit language from sender)
-          const translatedContent = await translate(content, senderLanguage);
+          try {
+            const data = JSON.parse(decryptedRaw);
+            if (data.o && data.b) {
+              content = data.o;
+              bridge = data.b;
+            }
+          } catch (e) {
+            // Not a JSON payload, probably an old message or simple text
+          }
+
+          // 3. Auto-Translate (using bridge if available, source is English if it's a bridge)
+          const translatedContent = await translate(bridge, senderLanguage);
 
           const newMessage: Message = {
             senderId,
             senderUsername,
-            content,
+            content, // Store original native text for display if desired
             translatedContent,
             timestamp: new Date(),
           };
@@ -328,39 +379,43 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           );
         }
 
-        // 1. Encrypt for recipient (Transit)
+        // 1. Create English Bridge
+        const bridge = await translateToBridge(content);
+        const payload = JSON.stringify({ o: content, b: bridge });
+
+        // 2. Encrypt for recipient (Transit)
         const encryptedForRecipient = await CryptoService.encrypt(
-          content,
+          payload,
           contact.contactPublicKey,
         );
 
-        // 2. Encrypt for self (Local Storage)
+        // 3. Encrypt for self (Local Storage)
         const { publicKey: myPublicKey } =
           await CryptoService.getOrCreateKeyPair();
         const encryptedForMe = await CryptoService.encrypt(
-          content,
+          payload,
           myPublicKey,
         );
 
-        // 3. Send encrypted message to server (passing our inputLanguage)
+        // 4. Send encrypted message to server (using "en" as the bridge language)
         await connection.invoke(
           "SendMessageToUser",
           targetUserId,
-          inputLanguage,
+          "en",
           encryptedForRecipient,
         );
 
-        // 4. Save "encrypted for me" version to Local DB
+        // 5. Save "encrypted for me" version to Local DB
         await saveLocalMessage(
           db,
           targetUserId,
           "me",
           "Me",
-          inputLanguage,
+          inputLanguage, // Store our native language tag for local reference
           encryptedForMe,
         );
 
-        // 5. Update local state with plain text for immediate view
+        // 6. Update local state with plain text for immediate view
         const newMessage: Message = {
           senderId: "me",
           senderUsername: "Me",
