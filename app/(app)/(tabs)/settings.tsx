@@ -1,12 +1,28 @@
 import { useAuth } from "@/src/contexts/AuthContext";
-import { SUPPORTED_LANGUAGES, useTranslation } from "@/src/contexts/TranslationContext";
+import {
+  SUPPORTED_LANGUAGES,
+  useTranslation,
+} from "@/src/contexts/TranslationContext";
 import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 export default function Settings() {
   const { logout } = useAuth();
-  const { targetLanguage, setLanguage, isLanguageAlreadyDownloaded, downloadSelectedLanguage, isDownloading } = useTranslation();
+  const {
+    targetLanguage,
+    setLanguage,
+    isLanguageAlreadyDownloaded,
+    downloadSelectedLanguage,
+    isDownloading,
+  } = useTranslation();
   const [selectedLanguage, setSelectedLanguage] = useState(targetLanguage);
 
   function changeSelectedLanguage(lang: string) {
@@ -21,40 +37,60 @@ export default function Settings() {
 
       <View style={styles.section}>
         <Text style={styles.label}>Translation Language</Text>
-        <Text style={styles.description}>All incoming messages will be automatically translated to this language.</Text>
+        <Text style={styles.description}>
+          All incoming messages will be automatically translated to this
+          language.
+        </Text>
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={targetLanguage}
             onValueChange={(itemValue) => changeSelectedLanguage(itemValue)}
-            style={styles.picker}>
+            style={styles.picker}
+          >
             {SUPPORTED_LANGUAGES.map((lang) => (
-              <Picker.Item key={lang.value} label={lang.label} value={lang.value} />
+              <Picker.Item
+                key={lang.value}
+                label={lang.label}
+                value={lang.value}
+              />
             ))}
           </Picker>
         </View>
         <View style={styles.footer}>
           {!isLanguageAlreadyDownloaded ? (
-            
-            <Pressable onPress={() => downloadSelectedLanguage(selectedLanguage)}>
-              <Text
-                style={{
-                  borderColor: "black",
-                  borderWidth: 2,
-                  display: "flex",
-                  padding: 10,
-                  fontSize: 16,
-                  borderRadius: 15,
-                }}>
-                Download Language
-              </Text>
-            </Pressable>
+            <View>
+              {isDownloading ? (
+                <View style={styles.footer}>
+                  <ActivityIndicator
+                    size="large"
+                    color="#00ff00"
+                    style={{ transform: [{ scale: 2.0 }] }}
+                  />
+                  <Text>Downloading language pack...</Text>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => downloadSelectedLanguage(selectedLanguage)}
+                  style={styles.downloadButton}
+                >
+                  <Text
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: 16,
+                    }}
+                  >
+                    Download Language
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           ) : (
             <Text style={styles.infoLabel}>Language downloaded</Text>
           )}
         </View>
       </View>
 
-      <View style={styles.section}>
+      {/* <View style={styles.section}>
         <Text style={styles.label}>Privacy & Security</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>End-to-End Encryption</Text>
@@ -68,7 +104,7 @@ export default function Settings() {
           <Text style={styles.infoLabel}>Biometrics</Text>
           <Text style={styles.infoValue}>Enabled</Text>
         </View>
-      </View>
+      </View> */}
 
       <View style={styles.footer}>
         <Pressable style={styles.logoutButton} onPress={() => logout()}>
@@ -112,8 +148,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   picker: {
-    height: 50,
+    height: 60,
     width: "100%",
+    color: "black",
   },
   infoRow: {
     flexDirection: "row",
@@ -139,6 +176,14 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     backgroundColor: "#FF3B30",
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 8,
+    width: "100%",
+    alignItems: "center",
+  },
+  downloadButton: {
+    backgroundColor: "#ffc830",
     paddingVertical: 12,
     paddingHorizontal: 40,
     borderRadius: 8,

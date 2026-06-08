@@ -9,6 +9,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { BiometricService } from "../services/biometricService";
 import { CryptoService } from "../services/cryptoService";
 import {
+  deleteLocalChat,
   getAllLocalChats,
   getLocalMessages,
   initDatabase,
@@ -30,6 +31,7 @@ interface ChatContextProps {
   messages: Record<string, Message[]>; // Keyed by contactUserId
   sendMessage: (targetUserId: string, content: string) => Promise<void>;
   loadChatHistory: (contactId: string) => Promise<void>;
+  deleteChat: (contactId: string) => Promise<void>;
   isConnected: boolean;
   isLocked: boolean;
 }
@@ -381,9 +383,30 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const deleteChat = async (contactId: string) => {
+    if (!db) return;
+    try {
+      await deleteLocalChat(db, contactId);
+      setMessages((prev) => {
+        const newMessages = { ...prev };
+        delete newMessages[contactId];
+        return newMessages;
+      });
+    } catch (error) {
+      console.error(`Failed to delete chat for ${contactId}`, error);
+    }
+  };
+
   return (
     <ChatContext.Provider
-      value={{ messages, sendMessage, loadChatHistory, isConnected, isLocked }}
+      value={{
+        messages,
+        sendMessage,
+        loadChatHistory,
+        deleteChat,
+        isConnected,
+        isLocked,
+      }}
     >
       {children}
     </ChatContext.Provider>

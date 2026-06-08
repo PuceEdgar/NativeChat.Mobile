@@ -5,6 +5,7 @@ import { InviteProvider } from "@/src/contexts/InviteContext";
 import { TranslationProvider } from "@/src/contexts/TranslationContext";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 function InitialLayout() {
   const { userToken, isLoading } = useAuth();
@@ -33,16 +34,18 @@ function InitialLayout() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <InviteProvider>
-        <ContactProvider>
-          <TranslationProvider>
-            <ChatProvider>
-              <InitialLayout />
-            </ChatProvider>
-          </TranslationProvider>
-        </ContactProvider>
-      </InviteProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <InviteProvider>
+          <ContactProvider>
+            <TranslationProvider>
+              <ChatProvider>
+                <InitialLayout />
+              </ChatProvider>
+            </TranslationProvider>
+          </ContactProvider>
+        </InviteProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

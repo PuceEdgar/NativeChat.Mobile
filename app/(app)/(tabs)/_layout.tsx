@@ -28,7 +28,8 @@ export default function TabLayout() {
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              maxWidth: 250,
+              maxWidth: 150,
+              paddingHorizontal: 25
             }}>
             <Pressable onPress={() => router.push("/search")}>
               <Ionicons name="search" size={30} />
@@ -36,11 +37,11 @@ export default function TabLayout() {
             <Pressable onPress={() => router.push("/invites")}>
               <Ionicons name="person" size={30} />
             </Pressable>
-            <Pressable
+            {/* <Pressable
               onPress={handleLogout}
               style={{ marginRight: 30, backgroundColor: "#ffd33d", padding: 10, borderRadius: 10 }}>
               <Text style={{ fontSize: 16, fontWeight: "bold" }}>Log out</Text>
-            </Pressable>
+            </Pressable> */}
           </View>
         ),
       }}>

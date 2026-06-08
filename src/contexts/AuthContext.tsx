@@ -4,6 +4,7 @@ import { secureStorage } from "../utils/secureStorage";
 
 interface AuthProps {
   userToken: string | null;
+  username: string | null;
   isLoading: boolean;
   register: Function;
   login: Function;
@@ -16,15 +17,18 @@ const BASE_URL = "https://nativechat.isharetime.com"; //"http://10.0.2.2:5048";
 
 export const AuthProvider = ({ children }: any) => {
   const [userToken, setUserToken] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const checkToken = async () => {
       try {
         const token = await secureStorage.getItem("jwt");
+        const storedUsername = await secureStorage.getItem("username");
 
         if (token) {
           setUserToken(token);
+          setUsername(storedUsername);
 
           // SELF-HEALING: Ensure old users get keys even if they didn't re-login
           const { publicKey } = await CryptoService.getOrCreateKeyPair();
@@ -46,14 +50,14 @@ export const AuthProvider = ({ children }: any) => {
     checkToken();
   }, []);
 
-  const register = async (username: string, password: string) => {
+  const register = async (usernameInput: string, password: string) => {
     try {
       // Generate E2EE keys locally before registering
       const { publicKey } = await CryptoService.getOrCreateKeyPair();
 
       const response = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
-        body: JSON.stringify({ username, password, publicKey }),
+        body: JSON.stringify({ username: usernameInput, password, publicKey }),
         headers: {
           "Content-Type": "application/json",
         },
@@ -70,12 +74,12 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (usernameInput: string, password: string) => {
     try {
       const response = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: usernameInput, password }),
       });
 
       const data = await response.json();
@@ -83,6 +87,7 @@ export const AuthProvider = ({ children }: any) => {
       if (response.ok && data.token) {
         console.log(data.token);
         await secureStorage.setItem("jwt", data.token);
+        await secureStorage.setItem("username", usernameInput);
 
         // Ensure local keys exist and server has the public key
         const { publicKey } = await CryptoService.getOrCreateKeyPair();
@@ -95,6 +100,7 @@ export const AuthProvider = ({ children }: any) => {
         );
 
         setUserToken(data.token); // Triggers re-render for navigation
+        setUsername(usernameInput);
       } else {
         throw new Error(data.message || "Login failed");
       }
@@ -106,18 +112,20 @@ export const AuthProvider = ({ children }: any) => {
   const logout = async () => {
     try {
       await secureStorage.removeItem("jwt");
+      await secureStorage.removeItem("username");
       setUserToken(null);
+      setUsername(null);
     } catch (error) {
       console.error("Failed to clear token", error);
     }
   };
 
-  const findUser = async (username: string) => {
+  const findUser = async (usernameInput: string) => {
     try {
       const token = await secureStorage.getItem("jwt");
 
       if (token) {
-        const response = await fetch(`${BASE_URL}/user/find/${username}`, {
+        const response = await fetch(`${BASE_URL}/user/find/${usernameInput}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -126,7 +134,7 @@ export const AuthProvider = ({ children }: any) => {
         });
 
         if (response.status === 404) {
-          console.log(`user: ${username} not found!`);
+          console.log(`user: ${usernameInput} not found!`);
           return null;
         }
         if (!response.ok) throw new Error("Search failed");
@@ -138,7 +146,15 @@ export const AuthProvider = ({ children }: any) => {
 
   return (
     <AuthContext.Provider
-      value={{ userToken, isLoading, register, login, logout, findUser }}
+      value={{
+        userToken,
+        username,
+        isLoading,
+        register,
+        login,
+        logout,
+        findUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

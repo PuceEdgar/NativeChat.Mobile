@@ -1,11 +1,12 @@
 import { useInvites } from "@/src/contexts/InviteContext";
 import { useContacts } from "@/src/contexts/ContactContext";
-import { useState } from "react";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function InvitesScreen() {
-  const { pendingInvites, acceptInvite, rejectInvite } = useInvites();
+  const { pendingInvites, acceptInvite, rejectInvite, cancelInvite } = useInvites();
   const { refreshContacts } = useContacts();
+  const { username } = useAuth();
 
   const handleAcceptInvite = async (id: number) => {
     const success = await acceptInvite(id);
@@ -14,15 +15,46 @@ export default function InvitesScreen() {
     }
   };
 
-  const renderInvite = ({ item }: { item: any }) => (
+  const receivedInvites = pendingInvites.filter(
+    (invite) => invite.receiverUsername === username,
+  );
+  const sentInvites = pendingInvites.filter(
+    (invite) => invite.senderUsername === username,
+  );
+
+  const renderReceivedInvite = ({ item }: { item: any }) => (
     <View style={styles.inviteItem}>
       <Text style={styles.inviteText}>Invite from: {item.senderUsername}</Text>
       <View style={styles.actionButtons}>
-        <Pressable style={[styles.actionButton, styles.acceptButton]} onPress={() => handleAcceptInvite(item.id)}>
+        <Pressable
+          style={[styles.actionButton, styles.acceptButton]}
+          onPress={() => handleAcceptInvite(item.id)}
+        >
           <Text style={styles.buttonText}>Accept</Text>
         </Pressable>
-        <Pressable style={[styles.actionButton, styles.rejectButton]} onPress={() => rejectInvite(item.id)}>
+        <Pressable
+          style={[styles.actionButton, styles.rejectButton]}
+          onPress={() => rejectInvite(item.id)}
+        >
           <Text style={styles.buttonText}>Reject</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const renderSentInvite = ({ item }: { item: any }) => (
+    <View style={styles.inviteItem}>
+      <Text style={styles.inviteText}>Invite to: {item.receiverUsername}</Text>
+      <View style={styles.actionButtons}>
+        <Text style={styles.pendingText}>Pending</Text>
+        {/* <View style={styles.pendingBadge}>
+          
+        </View> */}
+        <Pressable
+          style={[styles.actionButton, styles.cancelButton]}
+          onPress={() => cancelInvite(item.id)}
+        >
+          <Text style={styles.buttonText}>Cancel</Text>
         </Pressable>
       </View>
     </View>
@@ -30,19 +62,34 @@ export default function InvitesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <Text style={styles.header}>Pending Invites</Text>
-        {pendingInvites.length > 0 ? (
+      <View style={styles.section}>
+        <Text style={styles.header}>Received Invites</Text>
+        {receivedInvites.length > 0 ? (
           <FlatList
-            data={pendingInvites}
+            data={receivedInvites}
             keyExtractor={(item) => item.id.toString()}
-            renderItem={renderInvite}
-            style={styles.list}
+            renderItem={renderReceivedInvite}
+            scrollEnabled={false}
           />
         ) : (
-          <Text style={styles.emptyText}>No pending invites</Text>
+          <Text style={styles.emptyText}>No received invites</Text>
         )}
-        <View style={styles.separator}></View>
+      </View>
+
+      <View style={styles.separator} />
+
+      <View style={styles.section}>
+        <Text style={styles.header}>Sent Invites</Text>
+        {sentInvites.length > 0 ? (
+          <FlatList
+            data={sentInvites}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderSentInvite}
+            scrollEnabled={false}
+          />
+        ) : (
+          <Text style={styles.emptyText}>No sent invites</Text>
+        )}
       </View>
     </View>
   );
@@ -50,51 +97,24 @@ export default function InvitesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
-  searchContainer: {
-    flexDirection: "column",
-    gap: 10,
-  },
-  button: {
-    width: 130,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: "green",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonLabel: {
-    fontSize: 18,
-    color: "white",
-    fontWeight: "600",
-  },
-  resultContainer: {
-    marginTop: 20,
-    alignItems: "center",
-    gap: 10,
-  },
-  resultText: {
-    fontSize: 18,
-    marginBottom: 10,
+  section: {
+    marginBottom: 20,
   },
   header: {
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 15,
-    marginTop: 0,
   },
   separator: {
     height: 1,
-    backgroundColor: "#423636",
-    marginVertical: 20,
+    backgroundColor: "#eee",
+    marginVertical: 10,
   },
   emptyText: {
     color: "#888",
     fontStyle: "italic",
     textAlign: "center",
-    marginVertical: 20,
-  },
-  list: {
-    maxHeight: 300,
+    marginVertical: 10,
   },
   inviteItem: {
     flexDirection: "row",
@@ -113,7 +133,7 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
-    gap: 10,
+    gap: 15,    
   },
   actionButton: {
     paddingVertical: 8,
@@ -126,9 +146,25 @@ const styles = StyleSheet.create({
   rejectButton: {
     backgroundColor: "#F44336",
   },
+  cancelButton: {
+    backgroundColor: "#9E9E9E",
+  },
   buttonText: {
     color: "white",
     fontWeight: "bold",
+    fontSize: 14,
+  },
+  pendingBadge: {
+    backgroundColor: "#FFC107",
+    alignContent: "center",
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  pendingText: {
+    color: "#000",
+    fontWeight: "bold",
     fontSize: 12,
+    alignSelf: "center"
   },
 });
+

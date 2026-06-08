@@ -1,16 +1,25 @@
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useInvites } from "@/src/contexts/InviteContext";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 export default function ContactSearchScreen() {
   const { findUser } = useAuth();
-  const { sendInvite } = useInvites();
+  const { sendInvite, refreshInvites } = useInvites();
 
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<any>(null);
   const [sending, setSending] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [username, setUsername] = useState("");
 
   const handleSearch = async () => {
     console.log(`searching for user: ${query}`);
@@ -18,8 +27,9 @@ export default function ContactSearchScreen() {
       return;
     }
 
+    setUsername(query);
     setLoading(true);
-
+    setHasSearched(true);
     try {
       const user = await findUser(query);
       setResult(user);
@@ -33,9 +43,12 @@ export default function ContactSearchScreen() {
   const handleSendInvite = async () => {
     if (!result) return;
     setSending(true);
+    setHasSearched(false);
+    setUsername("");
     const success = await sendInvite(result.username);
     setSending(false);
     if (success) {
+      await refreshInvites(); // Added this to refresh the context state
       Alert.alert("Success", "Invite sent!");
       setResult(null);
       setQuery("");
@@ -47,18 +60,38 @@ export default function ContactSearchScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
-        <TextInput placeholder="Enter username" value={query} onChangeText={setQuery} style={styles.input} />
+        <TextInput
+          placeholder="Enter username"
+          value={query}
+          onChangeText={setQuery}
+          style={styles.input}
+        />
         <Pressable style={styles.button} onPress={handleSearch}>
-          <Text style={styles.buttonLabel}>{loading ? "Searching..." : "Search"}</Text>
+          <Text style={styles.buttonLabel}>
+            {loading ? "Searching..." : "Search"}
+          </Text>
         </Pressable>
       </View>
       <View style={styles.separator}></View>
-      {result && (
+      {result ? (
         <View style={styles.resultContainer}>
           <Text style={styles.resultText}>Found: {result.username}</Text>
-          <Pressable style={[styles.button, { backgroundColor: "blue" }]} onPress={handleSendInvite} disabled={sending}>
-            <Text style={styles.buttonLabel}>{sending ? "Sending..." : "Send invite"}</Text>
+          <Pressable
+            style={[styles.button, { backgroundColor: "blue" }]}
+            onPress={handleSendInvite}
+            disabled={sending}
+          >
+            <Text style={styles.buttonLabel}>
+              {sending ? "Sending..." : "Send invite"}
+            </Text>
           </Pressable>
+        </View>
+      ) : (
+        <View style={styles.resultContainer}>
+          <Text style={styles.resultText}>
+            {" "}
+            {hasSearched ? `User: ${username} not found.` : null}
+          </Text>
         </View>
       )}
     </View>
@@ -68,7 +101,13 @@ export default function ContactSearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
   title: { fontSize: 24, fontWeight: "bold" },
-  input: { borderWidth: 2, borderRadius: 5, width: 200, height: 50, paddingHorizontal: 10 },
+  input: {
+    borderWidth: 2,
+    borderRadius: 5,
+    width: 200,
+    height: 50,
+    paddingHorizontal: 10,
+  },
   searchContainer: {
     alignItems: "center",
     justifyContent: "center",

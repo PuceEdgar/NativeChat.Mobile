@@ -68,3 +68,7 @@ export const getAllLocalChats = async (db: SQLite.SQLiteDatabase) => {
   console.log(rows);
   return rows;
 };
+
+export const deleteLocalChat = async (db: SQLite.SQLiteDatabase, chatId: string) => {
+  await db.runAsync("DELETE FROM messages WHERE chatId = ?", [chatId]);
+};

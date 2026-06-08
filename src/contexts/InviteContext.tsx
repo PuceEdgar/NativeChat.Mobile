@@ -6,6 +6,7 @@ interface Invite {
   id: number;
   senderId: number;
   senderUsername: string;
+  receiverUsername: string;
   status: string;
   createdAt: string;
 }
@@ -16,6 +17,7 @@ interface InviteContextProps {
   sendInvite: (username: string) => Promise<boolean>;
   acceptInvite: (id: number) => Promise<boolean>;
   rejectInvite: (id: number) => Promise<boolean>;
+  cancelInvite: (id: number) => Promise<boolean>;
 }
 
 const InviteContext = createContext<InviteContextProps>(
@@ -99,6 +101,22 @@ export const InviteProvider = ({ children }: { children: React.ReactNode }) => {
     return false;
   };
 
+  const cancelInvite = async (id: number) => {
+    try {
+      const response = await fetch(`${BASE_URL}/invites/cancel/${id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      if (response.ok) {
+        await refreshInvites();
+        return true;
+      }
+    } catch (error) {
+      console.error("Failed to cancel invite", error);
+    }
+    return false;
+  };
+
   return (
     <InviteContext.Provider
       value={{
@@ -107,6 +125,7 @@ export const InviteProvider = ({ children }: { children: React.ReactNode }) => {
         sendInvite,
         acceptInvite,
         rejectInvite,
+        cancelInvite,
       }}
     >
       {children}
