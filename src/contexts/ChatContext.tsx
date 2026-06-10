@@ -1,9 +1,4 @@
 import { decode as base64Decode } from "js-base64";
-import {
-  HubConnection,
-  HubConnectionBuilder,
-  LogLevel,
-} from "@microsoft/signalr";
 import * as SQLite from "expo-sqlite";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { BiometricService } from "../services/biometricService";
@@ -14,9 +9,11 @@ import {
   getLocalMessages,
   initDatabase,
   saveLocalMessage,
+  markMessagesAsRead,
 } from "../utils/database";
 import { useAuth } from "./AuthContext";
 import { useContacts } from "./ContactContext";
+import { useSocket } from "./SocketContext";
 import { useTranslation } from "./TranslationContext";
 
 export interface Message {
@@ -25,12 +22,14 @@ export interface Message {
   content: string;
   translatedContent?: string;
   timestamp: Date;
+  isRead: boolean;
 }
 
 interface ChatContextProps {
   messages: Record<string, Message[]>; // Keyed by contactUserId
   sendMessage: (targetUserId: string, content: string) => Promise<void>;
   loadChatHistory: (contactId: string) => Promise<void>;
+  markAsRead: (contactId: string) => Promise<void>;
   deleteChat: (contactId: string) => Promise<void>;
   isConnected: boolean;
   isLocked: boolean;
@@ -38,15 +37,12 @@ interface ChatContextProps {
 
 const ChatContext = createContext<ChatContextProps>({} as ChatContextProps);
 
-const HUB_URL = "https://nativechat.isharetime.com/chatHub"; //"http://10.0.2.2:5048/chatHub";
-
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const { userToken } = useAuth();
   const { contacts } = useContacts();
-  const { translate, inputLanguage } = useTranslation();
-  const [connection, setConnection] = useState<HubConnection | null>(null);
+  const { connection, isConnected } = useSocket();
+  const { translate, inputLanguage, translateToBridge } = useTranslation();
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
-  const [isConnected, setIsConnected] = useState(false);
   const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
   const [isLocked, setIsLocked] = useState(true);
 
@@ -121,6 +117,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
                 content,
                 translatedContent,
                 timestamp: new Date(msg.timestamp),
+                isRead: msg.isRead,
               },
             ];
           } catch (e) {
@@ -180,6 +177,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
                 translatedContent: isMe
                   ? content
                   : await translate(bridge, msg.senderLanguage),
+                isRead: msg.isRead,
               };
             }),
           );
@@ -228,6 +226,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
               timestamp: new Date(msg.timestamp),
               content,
               translatedContent,
+              isRead: msg.isRead,
             };
           } catch (e) {
             console.error(`error in decrypt history: ${e}`);
@@ -236,6 +235,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
               senderUsername: msg.senderUsername,
               timestamp: new Date(msg.timestamp),
               content: "[Decryption Failed]",
+              isRead: msg.isRead,
             };
           }
         }),
@@ -250,48 +250,28 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  useEffect(() => {
-    if (userToken) {
-      const newConnection = new HubConnectionBuilder()
-        .withUrl(`${HUB_URL}?access_token=${userToken}`)
-        .withAutomaticReconnect()
-        .configureLogging(LogLevel.Information)
-        .build();
-
-      setConnection(newConnection);
-    } else {
-      setConnection((prev) => {
-        if (prev) {
-          prev.stop();
-        }
-        return null;
+  const markAsRead = async (contactId: string) => {
+    if (!db) return;
+    const cid = contactId.toString();
+    try {
+      await markMessagesAsRead(db, cid);
+      setMessages((prev) => {
+        if (!prev[cid]) return prev;
+        const updatedHistory = prev[cid].map((msg) => ({
+          ...msg,
+          isRead: true,
+        }));
+        return {
+          ...prev,
+          [cid]: updatedHistory,
+        };
       });
-      setIsConnected(false);
+    } catch (error) {
+      console.error(`Failed to mark messages as read for ${cid}`, error);
     }
-  }, [userToken]);
+  };
 
-  // Handle Connection Start/Stop
-  useEffect(() => {
-    if (connection && db) {
-      if (connection.state === "Disconnected") {
-        connection
-          .start()
-          .then(() => {
-            setIsConnected(true);
-            console.log("Connected to SignalR Hub");
-          })
-          .catch((err) => console.error("SignalR Connection Error: ", err));
-      }
-
-      return () => {
-        if (connection.state !== "Disconnected") {
-          connection.stop();
-        }
-      };
-    }
-  }, [connection, db]);
-
-  // Handle Message Listener (separate from connection start to avoid re-starting on translate change)
+  // Handle Message Listener
   useEffect(() => {
     if (isConnected && connection && db && myUserId) {
       const handler = async (
@@ -317,6 +297,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             senderUsername,
             senderLanguage,
             encryptedContent,
+            false, // Incoming message is unread
           );
 
           // 2. Decrypt for local state
@@ -343,6 +324,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             content, // Store original native text for display if desired
             translatedContent,
             timestamp: new Date(),
+            isRead: false,
           };
 
           setMessages((prev) => {
@@ -413,6 +395,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           "Me",
           inputLanguage, // Store our native language tag for local reference
           encryptedForMe,
+          true, // Our own messages are considered read
         );
 
         // 6. Update local state with plain text for immediate view
@@ -422,6 +405,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
           content,
           translatedContent: content, // No need to translate own message
           timestamp: new Date(),
+          isRead: true,
         };
 
         setMessages((prev) => {
@@ -458,6 +442,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         messages,
         sendMessage,
         loadChatHistory,
+        markAsRead,
         deleteChat,
         isConnected,
         isLocked,

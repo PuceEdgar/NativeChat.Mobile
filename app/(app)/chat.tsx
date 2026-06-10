@@ -22,7 +22,7 @@ export default function Chat() {
     contactId: string;
     contactUsername: string;
   }>();
-  const { messages, sendMessage, loadChatHistory } = useChat();
+  const { messages, sendMessage, loadChatHistory, markAsRead } = useChat();
   const { inputLanguage, setInputLanguage } = useTranslation();
   const [inputText, setInputText] = useState("");
 
@@ -32,8 +32,19 @@ export default function Chat() {
   useEffect(() => {
     if (contactId) {
       loadChatHistory(contactId);
+      markAsRead(contactId);
     }
   }, [contactId]);
+
+  useEffect(() => {
+    // If we are in the chat and a new message arrives, mark it as read
+    if (contactId && chatMessages.length > 0) {
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      if (!lastMessage.isRead) {
+        markAsRead(contactId);
+      }
+    }
+  }, [chatMessages, contactId]);
 
   const handleSend = async () => {
     if (inputText.trim()) {

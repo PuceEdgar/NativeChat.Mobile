@@ -14,6 +14,9 @@ export default function Chats() {
     const chatHistory = messages[contactId];
     const lastMessage = chatHistory[chatHistory.length - 1];
 
+    // Calculate unread count
+    const unreadCount = chatHistory.filter((msg) => !msg.isRead).length;
+
     // Find the contact details from ContactContext to get the correct username
     const contact = contacts.find((c) => c.contactUserId.toString() === contactId);
 
@@ -22,6 +25,7 @@ export default function Chats() {
       contactUsername: contact ? contact.contactUsername : "Unknown User",
       lastMessage: lastMessage?.content || "",
       timestamp: lastMessage?.timestamp || new Date(),
+      unreadCount,
     };
   });
 
@@ -61,9 +65,16 @@ export default function Chats() {
             {item.lastMessage}
           </Text>
         </View>
-        <Text style={styles.timestamp}>
-          {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </Text>
+        <View style={styles.chatMeta}>
+          <Text style={styles.timestamp}>
+            {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </Text>
+          {item.unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadText}>{item.unreadCount}</Text>
+            </View>
+          )}
+        </View>
       </Pressable>
     </Swipeable>
   );
@@ -113,9 +124,27 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 2,
   },
+  chatMeta: {
+    alignItems: "flex-end",
+  },
   timestamp: {
     fontSize: 12,
     color: "#999",
+    marginBottom: 5,
+  },
+  unreadBadge: {
+    backgroundColor: "#007AFF",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 5,
+  },
+  unreadText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
   },
   emptyText: {
     color: "#888",

@@ -20,13 +20,19 @@ export const initDatabase = async (dbKey: string) => {
       senderUsername TEXT NOT NULL,
       senderLanguage TEXT,
       content TEXT NOT NULL,
-      timestamp TEXT NOT NULL
+      timestamp TEXT NOT NULL,
+      isRead INTEGER DEFAULT 0
     );
   `);
 
-  // Simple migration: Add senderLanguage column if it doesn't exist
+  // Simple migrations
   try {
     await db.execAsync("ALTER TABLE messages ADD COLUMN senderLanguage TEXT;");
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    await db.execAsync("ALTER TABLE messages ADD COLUMN isRead INTEGER DEFAULT 0;");
   } catch (e) {
     // Column already exists, ignore
   }
@@ -41,11 +47,12 @@ export const saveLocalMessage = async (
   senderUsername: string,
   senderLanguage: string,
   content: string,
+  isRead: boolean = false,
 ) => {
   const timestamp = new Date().toISOString();
   await db.runAsync(
-    "INSERT INTO messages (chatId, senderId, senderUsername, senderLanguage, content, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-    [chatId, senderId, senderUsername, senderLanguage, content, timestamp],
+    "INSERT INTO messages (chatId, senderId, senderUsername, senderLanguage, content, timestamp, isRead) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [chatId, senderId, senderUsername, senderLanguage, content, timestamp, isRead ? 1 : 0],
   );
 };
 
@@ -57,16 +64,22 @@ export const getLocalMessages = async (db: SQLite.SQLiteDatabase, chatId: string
     senderLanguage: row.senderLanguage || "en", // Default to English for legacy messages
     content: row.content,
     timestamp: new Date(row.timestamp),
+    isRead: row.isRead === 1,
   }));
+};
+
+export const markMessagesAsRead = async (db: SQLite.SQLiteDatabase, chatId: string) => {
+  await db.runAsync("UPDATE messages SET isRead = 1 WHERE chatId = ? AND isRead = 0", [chatId]);
 };
 
 export const getAllLocalChats = async (db: SQLite.SQLiteDatabase) => {
   const rows = await db.getAllAsync<any>(
     "SELECT m1.* FROM messages m1 INNER JOIN (SELECT chatId, MAX(timestamp) as max_ts FROM messages GROUP BY chatId) m2 ON m1.chatId = m2.chatId AND m1.timestamp = m2.max_ts",
   );
-  console.log("getalllocalchats");
-  console.log(rows);
-  return rows;
+  return rows.map((row) => ({
+    ...row,
+    isRead: row.isRead === 1,
+  }));
 };
 
 export const deleteLocalChat = async (db: SQLite.SQLiteDatabase, chatId: string) => {

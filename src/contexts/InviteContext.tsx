@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-import { secureStorage } from "../utils/secureStorage";
+import { useSocket } from "./SocketContext";
 
 interface Invite {
   id: number;
@@ -28,6 +28,7 @@ const BASE_URL = "https://nativechat.isharetime.com"; //"http://10.0.2.2:5048";
 
 export const InviteProvider = ({ children }: { children: React.ReactNode }) => {
   const { userToken } = useAuth();
+  const { connection, isConnected } = useSocket();
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
 
   const refreshInvites = async () => {
@@ -52,6 +53,19 @@ export const InviteProvider = ({ children }: { children: React.ReactNode }) => {
       setPendingInvites([]);
     }
   }, [userToken]);
+
+  useEffect(() => {
+    if (isConnected && connection) {
+      connection.on("ReceiveInvite", () => {
+        console.log("Real-time invite received, refreshing...");
+        refreshInvites();
+      });
+
+      return () => {
+        connection.off("ReceiveInvite");
+      };
+    }
+  }, [isConnected, connection]);
 
   const sendInvite = async (username: string) => {
     try {

@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from "@/src/contexts/AuthContext";
 import { ChatProvider } from "@/src/contexts/ChatContext";
 import { ContactProvider } from "@/src/contexts/ContactContext";
 import { InviteProvider } from "@/src/contexts/InviteContext";
+import { SocketProvider } from "@/src/contexts/SocketContext";
 import { TranslationProvider } from "@/src/contexts/TranslationContext";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
@@ -36,15 +37,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <InviteProvider>
-          <ContactProvider>
-            <TranslationProvider>
-              <ChatProvider>
-                <InitialLayout />
-              </ChatProvider>
-            </TranslationProvider>
-          </ContactProvider>
-        </InviteProvider>
+        <SocketProvider>
+          <InviteProvider>
+            <ContactProvider>
+              <TranslationProvider>
+                <ChatProvider>
+                  <InitialLayout />
+                </ChatProvider>
+              </TranslationProvider>
+            </ContactProvider>
+          </InviteProvider>
+        </SocketProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
