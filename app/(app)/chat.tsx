@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     maxWidth: 150,
     height: 40,
     justifyContent: "center",
-    backgroundColor: "#c5e7f5",
+    backgroundColor: "#e0e0e0",
   },
   picker: {
     height: 60,
@@ -211,6 +211,7 @@ const styles = StyleSheet.create({
   },
   pickerItem: {
     fontSize: 14,
+    color: "#292828"
   },
   listContent: { padding: 10, paddingBottom: 20 },
   messageWrapper: { marginBottom: 10, flexDirection: "row" },
@@ -238,7 +239,9 @@ const styles = StyleSheet.create({
   timestampText: { fontSize: 10, alignSelf: "flex-end", marginTop: 4 },
   inputContainer: {
     flexDirection: "row",
-    padding: 10,
+    paddingTop: 15,
+    paddingBottom: 30,
+    paddingHorizontal: 25,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#eee",
@@ -255,7 +258,7 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     marginLeft: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
     paddingVertical: 8,
     backgroundColor: "#007AFF",
     borderRadius: 20,

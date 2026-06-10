@@ -29,7 +29,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: "#25292e",
         },
-        title: "Native chat",
+        // title: "Native chat",
         headerRight: () => (
           <View
             style={{
@@ -63,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Contacts",
+           title: "Contacts",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "people" : "people-outline"} color={color} size={24} />
           ),
